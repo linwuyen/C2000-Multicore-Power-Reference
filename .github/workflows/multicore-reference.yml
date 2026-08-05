@@ -1,0 +1,17 @@
+name: Multicore Reference
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run CPU1 to CPU2 reference
+        working-directory: examples/multicore_reference
+        run: make test
