@@ -1,4 +1,4 @@
-# ASR5K-Lite CCS Workspace
+# C2000 Multicore Power Reference
 
 Public-safe F2838x multicore workspace and reference material for portfolio use.
 
@@ -51,7 +51,7 @@ The host reference does not claim CCS build, IPC timing, board behavior, or prod
 ## CCS workspace layout
 
 ```text
-ASR5K-Lite/
+C2000-Multicore-Power-Reference/
   .gitignore
   README.md
   sysconfig_cm/
