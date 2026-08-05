@@ -1,21 +1,54 @@
 # ASR5K-Lite CCS Workspace
 
-ASR5K-style 的公開簡化版 Code Composer Studio workspace，用於作品集展示與可重現的 C2000 範例。
+Public-safe F2838x multicore workspace and reference material for portfolio use.
 
-這個 repo 和私有 ASR5K 正式韌體 repo 是刻意分離的。它適合公開展示 CCS project structure、SysConfig 使用方式，以及不含機密內容的 F2838x workspace 範例。
+This repository is intentionally separated from formal product firmware and internal project governance. **It is not a production source of truth.** Product source, design authority, retained evidence, and operational state remain in separate private systems and are not copied here.
 
-## 1. Repository 角色
+## What this repository demonstrates
 
-- **用途：** public reduced ASR5K demonstration workspace。
-- **狀態：** public showcase repository。
-- **可見性：** public。
-- **範圍：** 乾淨的 CCS workspace 結構、SysConfig examples、非機密 project organization。
-- **正式產品狀態：** 不是 ASR5K 正式韌體 repository。
-- **正式 source of truth：** private `ASR5K_V2_Function` repository。
+- TI C2000 F2838x CPU1/CPU2/CM project structure;
+- SysConfig and generated-device-support ownership;
+- RAM and FLASH build boundaries;
+- duplicate-symbol and tool-version troubleshooting;
+- public-safe multicore command/applied-state design;
+- fail-safe frame validation and exact-evidence thinking.
 
-## 2. 目前 repository layout
+## Public multicore reference
 
-此 repo 維持為乾淨的 CCS workspace，包含四個 CCS projects：
+[`examples/multicore_reference/`](examples/multicore_reference/) contains a portable CPU1 → CPU2 reference:
+
+```text
+CPU1 command owner
+  sequence + command + reference + flags
+                 ↓ checksum / transport
+CPU2 applied-state owner
+  validate → apply reference or force safe zero
+```
+
+It includes:
+
+- an explicit frame ABI;
+- monotonic sequence ownership;
+- checksum validation;
+- stale/out-of-order rejection;
+- safe-zero behavior for corrupt or unsupported frames;
+- deterministic GCC host tests;
+- GitHub Actions validation.
+
+Run:
+
+```text
+cd examples/multicore_reference
+make test
+```
+
+The host reference does not claim CCS build, IPC timing, board behavior, or production qualification.
+
+## Sanitized engineering case study
+
+[`docs/case-studies/multicore-power-firmware-recovery.md`](docs/case-studies/multicore-power-firmware-recovery.md) explains a public-safe command/applied-state recovery method for multicore power firmware. Proprietary product identity, source, thresholds, pins, protocol values, and internal measurements are omitted.
+
+## CCS workspace layout
 
 ```text
 ASR5K-Lite/
@@ -25,13 +58,15 @@ ASR5K-Lite/
   sysconfig_cpu1/
   sysconfig_cpu2/
   sysconfig_multi/
+  examples/multicore_reference/
+  docs/case-studies/
 ```
 
-application source tree 不放在 repository root。CPU-specific source 與 SysConfig files 應留在各自的 CCS project directory 內。
+CPU-specific source and SysConfig files remain inside their CCS project directories. Application source is not placed loosely at repository root.
 
-## 3. 必要 TI 元件
+## Required TI components
 
-最低測試環境：
+Current documented environment:
 
 ```text
 C2000Ware        6.00.01.00
@@ -41,23 +76,15 @@ C2000 compiler   ti-cgt-c2000_22.6.1.LTS
 Device           F2838x / F28388D, 176-pin package
 ```
 
-C2000Ware 6.00.01.00 需要 SysConfig 1.24.0 或更新版本。如果 CCS 使用舊版 SysConfig，build 會在 C compilation 前失敗，常見訊息如下：
-
-```text
-C2000 SysConfig version 6.00.01.00 requires at least version 1.24.0 of SysConfig.
-```
-
-請在 CCS 確認產品 discovery：
+Confirm product discovery in:
 
 ```text
 Window > Preferences > Code Composer Studio > Products
 ```
 
-應能看到 C2000Ware 6.00.01.00 與 SysConfig 1.24.0 或更新版本。
+## Build verification
 
-## 4. Build verification
-
-CPU1 與 CPU2 的 RAM configuration 可用 shell 檢查：
+CPU1 and CPU2 RAM configurations can be invoked from the documented CCS workspace:
 
 ```powershell
 cd .\sysconfig_cpu1\RAM
@@ -67,48 +94,54 @@ cd ..\..\sysconfig_cpu2\RAM
 & 'C:\ti\ccs1281\ccs\utils\bin\gmake' -k -j 16 all -O
 ```
 
-預期輸出：
+Expected outputs:
 
 ```text
 sysconfig_cpu1/RAM/empty_sysconfig_cpu1.out
 sysconfig_cpu2/RAM/empty_sysconfig_cpu2.out
 ```
 
-CPU1 與 CPU2 的 FLASH configuration 也應能在 CCS 中 build。
+A retained build result must also record exact commit, tool versions, configuration, artifact path, timestamp, and SHA-256. README commands are not evidence that the current head has been built.
 
-## 5. Project notes
+## Device-support ownership
 
-device support 由 SysConfig 產生。下列 legacy local files 可能仍留在 project tree，但應從 CPU1 / CPU2 build 排除，避免 duplicate symbols：
+SysConfig owns generated device support. Legacy local files such as:
 
 ```text
 device/device.c
 device/F2838x_CodeStartBranch.asm
 ```
 
-此 project 不應依賴 suppress 或 filter compiler/linker problems。既有 `--diag_suppress=10063` 屬於 imported CCS project settings；目前修正方向應是 path/source ownership，不是隱藏 log。
+must not be compiled together with generated equivalents. Duplicate `Device_init` or `code_start` is an ownership error, not a warning to suppress.
 
-## 6. 常見問題
+## Common failures
 
-### `Build-variable COM_TI_C2000WARE_SOFTWARE_PACKAGE_* cannot be resolved`
-
-project 不應依賴 deprecated package variables。pull changes 後請 refresh 或 re-import CCS projects。
-
-### `symbol "Device_init" redefined` 或 `symbol "code_start" redefined`
-
-build 同時編進 SysConfig-generated device support 與 legacy local device support files。請確認 `device/device.c` 和 `device/F2838x_CodeStartBranch.asm` 已從 CPU1 / CPU2 build configuration 排除。
-
-### `cannot find file ".../driverlib.lib"`
-
-請確認 C2000Ware 6.00.01.00 安裝在 configured path。測試用標準路徑如下：
+### SysConfig version mismatch
 
 ```text
-C:/ti/c2000/C2000Ware_6_00_01_00
+C2000 SysConfig version 6.00.01.00 requires at least version 1.24.0 of SysConfig.
 ```
 
-## 7. Working rules
+Install/discover a compatible SysConfig version; do not patch generated output to bypass the requirement.
 
-1. 保持此 repo public-safe。
-2. 不加入機密 ASR5K implementation code。
-3. 不加入 customer / product-specific hardware data。
-4. generated build output 不進 version control。
-5. examples 必須可重現且有文件說明。
+### Duplicate symbols
+
+```text
+symbol "Device_init" redefined
+symbol "code_start" redefined
+```
+
+Check generated vs legacy source ownership for every build configuration.
+
+### DriverLib path failure
+
+Confirm the project points to the installed C2000Ware version and does not rely on a stale/deprecated package variable.
+
+## Public and confidentiality boundary
+
+1. Do not copy formal product firmware into this repository.
+2. Do not publish customer/product-specific schematics, thresholds, pin maps, protocols, logs, or measurements.
+3. Do not imply production qualification from host tests or empty-workspace builds.
+4. Keep generated build output out of Git.
+5. Every example must state what it proves and what remains unverified.
+6. Formal product source and internal project governance remain separate private authorities.
