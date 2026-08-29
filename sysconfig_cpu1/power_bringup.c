@@ -153,7 +153,12 @@ void PowerBringup_InitPwm(void)
                            EPWM_TZ_ACTION_EVENT_TZB,
                            EPWM_TZ_ACTION_LOW);
 
-    (void)PowerBringup_ApplyDuty(POWER_PWM_INITIAL_DUTY_PERMILLE);
+    if(!PowerBringup_ApplyDuty(POWER_PWM_INITIAL_DUTY_PERMILLE))
+    {
+        /* Preserve the FAULT state if configuration constants are invalid. */
+        SysCtl_enablePeripheral(SYSCTL_PERIPH_CLK_TBCLKSYNC);
+        return;
+    }
 
     EPWM_forceTripZoneEvent(POWER_PWM_BASE, EPWM_TZ_FORCE_EVENT_OST);
     g_sPowerBringupDiag.tripStatus = EPWM_getTripZoneFlagStatus(POWER_PWM_BASE);
