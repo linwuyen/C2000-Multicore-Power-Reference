@@ -19,10 +19,10 @@ docs/f28388d-power-control-source
 99afaa8b5cf39c50d6968353d986e8bba0676fee
 ```
 
-Code snapshot before this evidence document:
+Source reviewed through:
 
 ```text
-4dbb91b379970b6b3bd2fd1b4bdd6b01c130ff6e
+4c28a4ed19236c0f5aa9cb6b831c8e7163a2c100
 ```
 
 Rollback point for the implementation slice is the design/document baseline above.
@@ -87,18 +87,18 @@ No CPU2 source, linker command file, target configuration, SCI driver, or produc
 
 ### GPIO0 / GPIO1
 
-Previous CPU1 SysConfig assigned GPIO0/GPIO1 as LED GPIOs. That ownership conflicts with the board power mapping:
+Previous CPU1 SysConfig assigned GPIO0/GPIO1 as LED GPIOs. GPIO1 was explicitly assigned to the CPU2 controller core. That ownership conflicts with the board power mapping:
 
 ```text
 GPIO0 → EPWM1A
 GPIO1 → EPWM1B
 ```
 
-The M1 branch removes GPIO0/GPIO1 ownership from the CPU1 SysConfig file. The power bring-up layer configures the EPWM mux only after OST behavior has been configured.
+The M1 branch removes GPIO0/GPIO1 ownership from the CPU1 SysConfig file. The power bring-up layer explicitly selects CPU1 as controller core for both pins and configures the EPWM mux only after OST behavior has been configured. This prevents CPU1-only debugger reload behavior from depending on reset-default GPIO ownership.
 
 ### GPIO99
 
-GPIO99 is owned by the power bring-up layer as the board PWM-buffer control.
+GPIO99 is explicitly assigned to CPU1 by the power bring-up layer and is used as the board PWM-buffer control.
 
 Reviewed board documentation says the enable path is active-low:
 
