@@ -2,6 +2,7 @@
 #include "device.h"
 #include "board.h"
 #include "sci_drv.h"
+#include "power_bringup.h"
 
 #define SCI_LINE_BUFFER_SIZE 64U
 
@@ -26,6 +27,13 @@ void main(void)
 
     Device_init();
     Device_initGPIO();
+
+    /*
+     * Establish board-level actuator safety before SysConfig or application
+     * initialization can touch GPIO0/GPIO1 or any future power peripheral.
+     */
+    PowerBringup_InitEarlySafeState();
+
     Board_init();
 
     Interrupt_initModule();
@@ -33,10 +41,21 @@ void main(void)
 
     SCI_Init();
 
+    /*
+     * EPWM1 is configured with OST latched and GPIO99 buffer disabled.
+     * The function returns in READY and does not energize J5.
+     */
+    PowerBringup_InitPwm();
+
     for(;;)
     {
-
         CPU1HB++;
+
+        /*
+         * Debugger-driven ARM/STOP/duty requests are mediated here so SCI or
+         * other communication code does not own direct PWM authority.
+         */
+        PowerBringup_Service();
 
         if(SCI_isDataAvailableNonFIFO(SCIA_BASE))
         {
