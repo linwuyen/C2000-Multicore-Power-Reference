@@ -19,10 +19,10 @@ docs/f28388d-power-control-source
 99afaa8b5cf39c50d6968353d986e8bba0676fee
 ```
 
-Source reviewed through:
+Source/configuration reviewed through:
 
 ```text
-4c28a4ed19236c0f5aa9cb6b831c8e7163a2c100
+fbda9bc972f8b07b01256ce440a09ab31cf44e6a
 ```
 
 Rollback point for the implementation slice is the design/document baseline above.
@@ -218,16 +218,17 @@ Allowed software range in this slice is 5% to 90%. An out-of-range request latch
 
 ---
 
-## Target-configuration discrepancy to resolve
+## CPU1 target metadata alignment
 
-The repository currently contains two different forms of target metadata:
+The CPU1 project metadata and SysConfig metadata are now aligned to F28388D:
 
 - `.cproject` identifies `TMS320F28388D`;
-- the CPU1 `.syscfg` generic CLI arguments use `F2838x / F2838x_176pin`, while its `@v2CliArgs` line still names `TMS320F28384D`.
+- the CPU1 `.syscfg` generic CLI arguments use `F2838x / F2838x_176pin`;
+- the CPU1 `.syscfg` `@v2CliArgs` now identifies `TMS320F28388D`.
 
-This patch intentionally does **not** silently rewrite target metadata.
+The previous `TMS320F28384D` v2 metadata was corrected in this branch rather than left as an unexplained build ambiguity.
 
-Before target evidence is accepted, CCS/SysConfig must prove which device description actually generates the build and the mismatch must either be corrected or explicitly justified.
+This is still only **source/configuration alignment**. CCS/SysConfig generation must succeed on the exact branch before it becomes target-build evidence.
 
 Until then:
 
@@ -262,6 +263,7 @@ PASS requires:
 
 ```text
 [ ] SysConfig generation succeeds
+[ ] generated target is F28388D / CPU1 / 176-pin as intended
 [ ] power_bringup.c is compiled
 [ ] no duplicate Device_init/code_start ownership
 [ ] no undefined DriverLib symbol
@@ -420,7 +422,7 @@ PASS requires FAULT to remain latched and output to remain non-energizing. Recov
 
 1. No target build has yet been executed for this branch.
 2. No board measurement has yet verified GPIO99 polarity, JP4/JP5 population, or J5 disabled-state behavior.
-3. The SysConfig device metadata discrepancy remains open.
+3. CPU1 target metadata has been aligned in source but still requires successful SysConfig generation as evidence.
 4. Software OST is the only trip source in this slice; no CMPSS/XBAR hardware path exists yet.
 5. STOP is foreground software, so no deterministic fast shutdown latency is claimed.
 6. There is no ADC/control ISR yet.
