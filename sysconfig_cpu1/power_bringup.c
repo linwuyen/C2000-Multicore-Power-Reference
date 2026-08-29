@@ -89,9 +89,11 @@ void PowerBringup_InitEarlySafeState(void)
 {
     /*
      * Board documentation identifies GPIO99 as active-low buffer enable.
+     * Explicitly reclaim CPU1 ownership because this is a multicore workspace.
      * Set the output latch HIGH before making the pin an output so software
      * does not intentionally create an enable glitch during direction setup.
      */
+    GPIO_setControllerCore(POWER_PWM_BUFFER_GPIO, GPIO_CORE_CPU1);
     GPIO_setPinConfig(GPIO_99_GPIO99);
     GPIO_writePin(POWER_PWM_BUFFER_GPIO, POWER_PWM_BUFFER_DISABLE_LEVEL);
     GPIO_setPadConfig(POWER_PWM_BUFFER_GPIO, GPIO_PIN_TYPE_STD);
@@ -163,7 +165,13 @@ void PowerBringup_InitPwm(void)
     EPWM_forceTripZoneEvent(POWER_PWM_BASE, EPWM_TZ_FORCE_EVENT_OST);
     g_sPowerBringupDiag.tripStatus = EPWM_getTripZoneFlagStatus(POWER_PWM_BASE);
 
-    /* Only expose EPWM pins after trip behavior has already been established. */
+    /*
+     * The previous workspace assigned GPIO1 to CPU2. Reclaim both EPWM pins
+     * explicitly so CPU1-only debug reloads do not depend on reset defaults.
+     * Expose the EPWM mux only after OST behavior is already established.
+     */
+    GPIO_setControllerCore(0U, GPIO_CORE_CPU1);
+    GPIO_setControllerCore(1U, GPIO_CORE_CPU1);
     GPIO_setPadConfig(0U, GPIO_PIN_TYPE_STD);
     GPIO_setPadConfig(1U, GPIO_PIN_TYPE_STD);
     GPIO_setPinConfig(GPIO_0_EPWM1A);
