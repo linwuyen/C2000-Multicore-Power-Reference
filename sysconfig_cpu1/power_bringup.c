@@ -181,14 +181,35 @@ void PowerBringup_ForceSafe(PowerBringupFault fault)
     PowerBringup_BufferDisable();
 
     g_sPowerBringupDiag.tripStatus = EPWM_getTripZoneFlagStatus(POWER_PWM_BASE);
-    g_sPowerBringupDiag.fault = fault;
-    g_sPowerBringupDiag.state =
-        (fault == POWER_FAULT_NONE) ? POWER_STATE_READY : POWER_STATE_FAULT;
+
+    if(fault != POWER_FAULT_NONE)
+    {
+        g_sPowerBringupDiag.fault = fault;
+        g_sPowerBringupDiag.state = POWER_STATE_FAULT;
+    }
+    else if(g_sPowerBringupDiag.state != POWER_STATE_FAULT)
+    {
+        /* STOP is safe but is not fault-clear authority. */
+        g_sPowerBringupDiag.state = POWER_STATE_READY;
+    }
 }
 
 void PowerBringup_Service(void)
 {
     uint16_t tripStatus;
+
+    /*
+     * FAULT is latched in this first slice. Recovery is intentionally omitted;
+     * a reset/reload is required so STOP or a new duty cannot clear the latch.
+     */
+    if(g_sPowerBringupDiag.state == POWER_STATE_FAULT)
+    {
+        g_sPowerBringupCommand.armRequest = 0U;
+        g_sPowerBringupCommand.stopRequest = 0U;
+        PowerBringup_BufferDisable();
+        g_sPowerBringupDiag.tripStatus = EPWM_getTripZoneFlagStatus(POWER_PWM_BASE);
+        return;
+    }
 
     if(g_sPowerBringupCommand.stopRequest != 0U)
     {
